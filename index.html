@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Relay — Upload sekali, tautan permanen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-0:#0a0e14;
+    --bg-1:#11161f;
+    --bg-2:#161c27;
+    --line: rgba(255,255,255,0.08);
+    --text-0:#edeff3;
+    --text-1:#9aa3b2;
+    --text-2:#5c6577;
+    --accent-1:#4f8cff;
+    --accent-2:#9b6bff;
+    --danger:#ff6b6b;
+    --ok:#3ddc97;
+    --radius: 18px;
+  }
+
+  *{ box-sizing:border-box; }
+
+  body{
+    margin:0;
+    min-height:100vh;
+    font-family:'Inter', sans-serif;
+    color:var(--text-0);
+    background: radial-gradient(1200px 600px at 15% -10%, rgba(79,140,255,0.16), transparent 60%),
+                radial-gradient(1000px 700px at 110% 10%, rgba(155,107,255,0.14), transparent 55%),
+                var(--bg-0);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:32px 18px;
+    overflow-x:hidden;
+  }
+
+  .stage{
+    width:100%;
+    max-width:480px;
+    opacity:0;
+    transform: translateY(14px);
+    animation: rise 0.7s cubic-bezier(.16,1,.3,1) forwards;
+  }
+
+  @keyframes rise{ to{ opacity:1; transform:translateY(0); } }
+
+  /* ---------- Header / logo ---------- */
+  .brand{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-bottom:28px;
+  }
+
+  .brand svg{ width:30px; height:30px; flex-shrink:0; }
+
+  .brand-name{
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:600;
+    font-size:17px;
+    letter-spacing:0.01em;
+  }
+
+  .brand-tag{
+    font-size:11px;
+    color:var(--text-2);
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    margin-left:auto;
+  }
+
+  h1{
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:700;
+    font-size:clamp(26px, 5vw, 32px);
+    line-height:1.18;
+    letter-spacing:-0.01em;
+    margin:0 0 8px;
+  }
+
+  h1 span{
+    background:linear-gradient(100deg, var(--accent-1), var(--accent-2));
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+  }
+
+  .sub{
+    color:var(--text-1);
+    font-size:14.5px;
+    line-height:1.55;
+    margin:0 0 26px;
+    max-width:42ch;
+  }
+
+  /* ---------- Card ---------- */
+  .card{
+    background: linear-gradient(180deg, var(--bg-2), var(--bg-1));
+    border:1px solid var(--line);
+    border-radius: var(--radius);
+    padding:22px;
+    box-shadow: 0 30px 60px -30px rgba(0,0,0,0.6);
+  }
+
+  .step-label{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-size:11px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    color:var(--text-2);
+    margin-bottom:12px;
+  }
+
+  .step-label .dot{
+    width:5px; height:5px; border-radius:50%;
+    background:var(--accent-1);
+  }
+
+  /* ---------- Dropzone ---------- */
+  .dropzone{
+    border:1.5px dashed var(--line);
+    border-radius:14px;
+    padding:26px 18px;
+    text-align:center;
+    cursor:pointer;
+    transition: border-color .25s ease, background .25s ease, transform .2s ease;
+    position:relative;
+  }
+
+  .dropzone:hover{ border-color: rgba(79,140,255,0.4); background: rgba(79,140,255,0.04); }
+  .dropzone.drag{ border-color: var(--accent-1); background: rgba(79,140,255,0.08); transform: scale(1.01); }
+
+  .dropzone input[type=file]{ display:none; }
+
+  .dz-icon{
+    width:38px; height:38px;
+    margin:0 auto 12px;
+    color: var(--accent-1);
+    transition: transform .3s ease;
+  }
+  .dropzone:hover .dz-icon{ transform: translateY(-3px); }
+
+  .dz-title{ font-size:14px; font-weight:500; margin-bottom:4px; }
+  .dz-hint{ font-size:12.5px; color:var(--text-2); }
+
+  .picked-file{
+    display:none;
+    align-items:center;
+    gap:10px;
+    margin-top:14px;
+    padding:10px 12px;
+    border-radius:10px;
+    background: rgba(255,255,255,0.03);
+    border:1px solid var(--line);
+    font-size:13px;
+  }
+  .picked-file.show{ display:flex; animation: fadein .35s ease; }
+  @keyframes fadein{ from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:translateY(0);} }
+
+  .picked-file svg{ width:16px; height:16px; color:var(--ok); flex-shrink:0; }
+  .picked-file .meta{ flex:1; min-width:0; }
+  .picked-file .pf-name{ font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .picked-file .pf-size{ color:var(--text-2); font-size:11.5px; }
+  .picked-file .pf-clear{
+    border:none; background:none; color:var(--text-2); cursor:pointer; padding:4px;
+    border-radius:6px; transition: color .2s, background .2s;
+  }
+  .picked-file .pf-clear:hover{ color:var(--danger); background: rgba(255,107,107,0.1); }
+  .picked-file .pf-clear svg{ width:14px; height:14px; color:inherit; }
+
+  /* ---------- Filename field ---------- */
+  .field{ margin-top:18px; }
+  .field label{
+    display:block;
+    font-size:12px;
+    color:var(--text-1);
+    margin-bottom:7px;
+  }
+  .field input[type=text]{
+    width:100%;
+    background: rgba(255,255,255,0.03);
+    border:1px solid var(--line);
+    color:var(--text-0);
+    border-radius:10px;
+    padding:11px 13px;
+    font-size:13.5px;
+    font-family:'JetBrains Mono', monospace;
+    outline:none;
+    transition: border-color .2s ease, background .2s ease;
+  }
+  .field input[type=text]:focus{
+    border-color: rgba(79,140,255,0.55);
+    background: rgba(79,140,255,0.06);
+  }
+  .field input[type=text]::placeholder{ color:var(--text-2); font-family:'Inter',sans-serif; }
+
+  /* ---------- Button ---------- */
+  .btn{
+    width:100%;
+    margin-top:18px;
+    padding:13px 16px;
+    border:none;
+    border-radius:12px;
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:600;
+    font-size:14.5px;
+    color:#0a0e14;
+    background: linear-gradient(100deg, var(--accent-1), var(--accent-2));
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    transition: transform .15s ease, box-shadow .25s ease, opacity .2s ease;
+    box-shadow: 0 12px 24px -10px rgba(79,140,255,0.45);
+  }
+  .btn:hover:not(:disabled){ transform: translateY(-1px); box-shadow: 0 16px 30px -10px rgba(79,140,255,0.55); }
+  .btn:active:not(:disabled){ transform: translateY(0); }
+  .btn:disabled{ opacity:.4; cursor:not-allowed; box-shadow:none; }
+
+  .btn .mini-spinner{
+    width:15px; height:15px;
+    display:none;
+  }
+  .btn.loading .btn-text{ display:none; }
+  .btn.loading .mini-spinner{ display:inline-block; }
+
+  /* ---------- Donut spinner (signature element) ---------- */
+  .spinner-wrap{
+    display:none;
+    flex-direction:column;
+    align-items:center;
+    gap:16px;
+    padding:30px 10px 8px;
+    animation: fadein .4s ease;
+  }
+  .spinner-wrap.show{ display:flex; }
+
+  .donut{
+    width:64px;
+    height:64px;
+    border-radius:50%;
+    background: conic-gradient(from -90deg, var(--accent-1), var(--accent-2) 62%, transparent 62% 100%);
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 9px), #000 calc(100% - 9px));
+            mask: radial-gradient(farthest-side, transparent calc(100% - 9px), #000 calc(100% - 9px));
+    animation: spin 0.85s linear infinite;
+  }
+
+  .mini-spinner{
+    border-radius:50%;
+    background: conic-gradient(from -90deg, #0a0e14, rgba(10,14,20,0.25) 62%, transparent 62% 100%);
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px));
+            mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px));
+    animation: spin 0.7s linear infinite;
+  }
+
+  @keyframes spin{ to{ transform: rotate(360deg); } }
+
+  .spinner-status{ font-size:12.5px; color:var(--text-1); letter-spacing:0.02em; }
+
+  /* ---------- Result panel ---------- */
+  .result{
+    display:none;
+    margin-top:18px;
+    animation: fadein .45s ease;
+  }
+  .result.show{ display:block; }
+
+  .result-head{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-size:13px;
+    font-weight:500;
+    color: var(--ok);
+    margin-bottom:12px;
+  }
+  .result-head svg{ width:16px; height:16px; }
+
+  .link-row{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    background: rgba(255,255,255,0.03);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:9px 9px 9px 13px;
+    margin-bottom:9px;
+  }
+  .link-row .lr-label{
+    font-size:10.5px;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    color:var(--text-2);
+    flex-shrink:0;
+    width:64px;
+  }
+  .link-row .lr-url{
+    flex:1;
+    min-width:0;
+    font-family:'JetBrains Mono', monospace;
+    font-size:11.5px;
+    color:var(--text-0);
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .icon-btn{
+    border:none;
+    background: rgba(255,255,255,0.05);
+    color:var(--text-1);
+    width:30px; height:30px;
+    border-radius:8px;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+    flex-shrink:0;
+    transition: background .2s ease, color .2s ease;
+  }
+  .icon-btn:hover{ background: rgba(79,140,255,0.15); color:var(--accent-1); }
+  .icon-btn svg{ width:14px; height:14px; }
+
+  .open-btn{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    width:100%;
+    margin-top:10px;
+    padding:11px;
+    border-radius:10px;
+    border:1px solid var(--line);
+    background: rgba(255,255,255,0.02);
+    color:var(--text-0);
+    font-size:13px;
+    font-weight:500;
+    text-decoration:none;
+    transition: border-color .2s ease, background .2s ease;
+  }
+  .open-btn:hover{ border-color: rgba(79,140,255,0.45); background: rgba(79,140,255,0.06); }
+  .open-btn svg{ width:14px; height:14px; }
+
+  /* ---------- Error ---------- */
+  .error-box{
+    display:none;
+    margin-top:16px;
+    padding:11px 13px;
+    border-radius:10px;
+    border:1px solid rgba(255,107,107,0.3);
+    background: rgba(255,107,107,0.08);
+    color:#ffb3b3;
+    font-size:12.5px;
+    line-height:1.5;
+  }
+  .error-box.show{ display:block; animation: fadein .3s ease; }
+
+  .footnote{
+    text-align:center;
+    font-size:11.5px;
+    color:var(--text-2);
+    margin-top:20px;
+  }
+</style>
+</head>
+<body>
+
+<div class="stage">
+
+  <div class="brand">
+    <svg viewBox="0 0 32 32" fill="none">
+      <path d="M16 2 L29 9 V23 L16 30 L3 23 V9 Z" stroke="url(#g)" stroke-width="2" stroke-linejoin="round"/>
+      <path d="M16 2 V16 L29 9" stroke="url(#g)" stroke-width="2" stroke-linejoin="round"/>
+      <path d="M16 16 L3 9" stroke="url(#g)" stroke-width="2" stroke-linejoin="round"/>
+      <path d="M16 16 V30" stroke="url(#g)" stroke-width="2" stroke-linejoin="round" opacity="0.4"/>
+      <defs>
+        <linearGradient id="g" x1="3" y1="2" x2="29" y2="30">
+          <stop offset="0" stop-color="#4f8cff"/>
+          <stop offset="1" stop-color="#9b6bff"/>
+        </linearGradient>
+      </defs>
+    </svg>
+    <span class="brand-name">Relay</span>
+    <span class="brand-tag">File → Link</span>
+  </div>
+
+  <h1>Satu file masuk,<br><span>satu tautan permanen keluar.</span></h1>
+  <p class="sub">Pilih file, beri nama, lalu proses. File diunggah ke repository GitHub dan kamu mendapat tautan unduh yang benar-benar aktif.</p>
+
+  <div class="card">
+
+    <div class="step-label"><span class="dot"></span> Langkah 1 — Pilih file</div>
+
+    <label class="dropzone" id="dropzone">
+      <input type="file" id="fileInput">
+      <svg class="dz-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 16V4M12 4l-4 4M12 4l4 4"/>
+        <path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>
+      </svg>
+      <div class="dz-title">Klik untuk pilih file, atau seret ke sini</div>
+      <div class="dz-hint">Format apapun · maksimal sekitar 90MB</div>
+    </label>
+
+    <div class="picked-file" id="pickedFile">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20 6L9 17l-5-5"/>
+      </svg>
+      <div class="meta">
+        <div class="pf-name" id="pfName">—</div>
+        <div class="pf-size" id="pfSize">—</div>
+      </div>
+      <button class="pf-clear" id="pfClear" type="button" title="Hapus pilihan">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <div class="field">
+      <label for="filenameInput">Langkah 2 — Nama file untuk hasil unggahan</label>
+      <input type="text" id="filenameInput" placeholder="contoh: laporan-final.pdf">
+    </div>
+
+    <button class="btn" id="processBtn" disabled>
+      <span class="btn-text">Proses &amp; Unggah</span>
+      <span class="mini-spinner"></span>
+    </button>
+
+    <div class="spinner-wrap" id="spinnerWrap">
+      <div class="donut"></div>
+      <div class="spinner-status" id="spinnerStatus">Mengunggah ke GitHub…</div>
+    </div>
+
+    <div class="result" id="result">
+      <div class="result-head">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+        Berhasil diunggah
+      </div>
+
+      <div class="link-row">
+        <span class="lr-label">Unduh</span>
+        <span class="lr-url" id="downloadUrl">—</span>
+        <button class="icon-btn" data-copy="downloadUrl" title="Salin tautan">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        </button>
+      </div>
+
+      <div class="link-row">
+        <span class="lr-label">CDN</span>
+        <span class="lr-url" id="cdnUrl">—</span>
+        <button class="icon-btn" data-copy="cdnUrl" title="Salin tautan">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        </button>
+      </div>
+
+      <a class="open-btn" id="openLink" href="#" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14L21 3"/></svg>
+        Buka &amp; unduh file
+      </a>
+    </div>
+
+    <div class="error-box" id="errorBox"></div>
+
+  </div>
+
+  <div class="footnote">File disimpan permanen di repository GitHub yang sudah dikonfigurasi di server.</div>
+
+</div>
+
+<script>
+  const dropzone     = document.getElementById('dropzone');
+  const fileInput     = document.getElementById('fileInput');
+  const pickedFile     = document.getElementById('pickedFile');
+  const pfName       = document.getElementById('pfName');
+  const pfSize       = document.getElementById('pfSize');
+  const pfClear      = document.getElementById('pfClear');
+  const filenameInput = document.getElementById('filenameInput');
+  const processBtn   = document.getElementById('processBtn');
+  const spinnerWrap   = document.getElementById('spinnerWrap');
+  const spinnerStatus = document.getElementById('spinnerStatus');
+  const resultBox     = document.getElementById('result');
+  const errorBox       = document.getElementById('errorBox');
+  const downloadUrlEl = document.getElementById('downloadUrl');
+  const cdnUrlEl       = document.getElementById('cdnUrl');
+  const openLink       = document.getElementById('openLink');
+
+  let currentFile = null;
+
+  function formatSize(bytes){
+    if(bytes < 1024) return bytes + ' B';
+    if(bytes < 1024*1024) return (bytes/1024).toFixed(1) + ' KB';
+    return (bytes/(1024*1024)).toFixed(2) + ' MB';
+  }
+
+  function setFile(file){
+    currentFile = file;
+    pfName.textContent = file.name;
+    pfSize.textContent = formatSize(file.size);
+    pickedFile.classList.add('show');
+    if(!filenameInput.value) filenameInput.value = file.name;
+    processBtn.disabled = false;
+    resultBox.classList.remove('show');
+    errorBox.classList.remove('show');
+  }
+
+  function clearFile(){
+    currentFile = null;
+    fileInput.value = '';
+    pickedFile.classList.remove('show');
+    processBtn.disabled = true;
+  }
+
+  dropzone.addEventListener('click', (e) => { if(e.target.closest('.pf-clear')) return; });
+  fileInput.addEventListener('change', () => { if(fileInput.files[0]) setFile(fileInput.files[0]); });
+
+  ['dragenter','dragover'].forEach(evt =>
+    dropzone.addEventListener(evt, (e) => { e.preventDefault(); dropzone.classList.add('drag'); })
+  );
+  ['dragleave','drop'].forEach(evt =>
+    dropzone.addEventListener(evt, (e) => { e.preventDefault(); dropzone.classList.remove('drag'); })
+  );
+  dropzone.addEventListener('drop', (e) => {
+    const file = e.dataTransfer.files[0];
+    if(file) setFile(file);
+  });
+
+  pfClear.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); clearFile(); });
+
+  document.querySelectorAll('[data-copy]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const el = document.getElementById(btn.dataset.copy);
+      navigator.clipboard.writeText(el.textContent).then(() => {
+        const original = btn.innerHTML;
+        btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>';
+        setTimeout(() => btn.innerHTML = original, 1200);
+      });
+    });
+  });
+
+  processBtn.addEventListener('click', async () => {
+    if(!currentFile) return;
+
+    processBtn.disabled = true;
+    processBtn.classList.add('loading');
+    spinnerWrap.classList.add('show');
+    resultBox.classList.remove('show');
+    errorBox.classList.remove('show');
+    spinnerStatus.textContent = 'Mengunggah ke GitHub…';
+
+    const formData = new FormData();
+    formData.append('file', currentFile);
+    formData.append('filename', filenameInput.value.trim() || currentFile.name);
+
+    try {
+      const res = await fetch('/api/upload', { method: 'POST', body: formData });
+      const data = await res.json();
+
+      if(!res.ok){
+        throw new Error(data.error || 'Terjadi kesalahan saat mengunggah.');
+      }
+
+      spinnerStatus.textContent = 'Selesai.';
+      downloadUrlEl.textContent = data.download_url;
+      cdnUrlEl.textContent = data.cdn_url;
+      openLink.href = data.download_url;
+
+      setTimeout(() => {
+        spinnerWrap.classList.remove('show');
+        resultBox.classList.add('show');
+      }, 350);
+
+    } catch(err){
+      spinnerWrap.classList.remove('show');
+      errorBox.textContent = err.message;
+      errorBox.classList.add('show');
+    } finally {
+      processBtn.disabled = false;
+      processBtn.classList.remove('loading');
+    }
+  });
+</script>
+
+</body>
+</html>
